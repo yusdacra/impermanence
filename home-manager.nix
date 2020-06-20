@@ -144,9 +144,7 @@ in
                 mkdir -p "${mountPoint}"
             fi
             if ${pkgs.utillinux}/bin/mount | grep "${mountPoint}"; then
-                if ${pkgs.utillinux}/bin/mount | grep "${mountPoint}" | grep "${targetDir}"; then
-                    mountedPaths["${mountPoint}"]=0
-                else
+                if ! ${pkgs.utillinux}/bin/mount | grep "${mountPoint}" | grep "${targetDir}"; then
                     # The target directory changed, so we need to remount
                     echo "remounting ${mountPoint}"
                     ${systemctl} --user stop bindMount-${sanitizeName targetDir}
@@ -185,7 +183,7 @@ in
             mountPoint = concatPaths [ config.home.homeDirectory mountDir ];
           in
           ''
-            if [[ ''${mountedPaths["${mountPoint}"]} == 1 ]]; then
+            if [[ -n ''${mountedPaths["${mountPoint}"]+x} ]]; then
                 fusermount -u "${mountPoint}"
             fi
           '';
