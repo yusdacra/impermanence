@@ -125,15 +125,7 @@ in
       let
         dag = config.lib.dag;
 
-        declareMountedPathsArray = {
-          name = "declareMountedPathsArray";
-          value =
-            dag.entryBefore
-              [ "writeBoundary" ]
-              "declare -A mountedPaths";
-        };
-
-        mkBindMountSnippet = persistentStoragePath: dir:
+        mkBindMount = persistentStoragePath: dir:
           let
             mountDir =
               if cfg.${persistentStoragePath}.removePrefixDirectory then
@@ -167,18 +159,23 @@ in
             fi
           '';
 
-        mkBindMountScriptForPath = persistentStoragePath: {
-          name = "createAndMount-" + (sanitizeName persistentStoragePath);
+        mkBindMountsForPath = persistentStoragePath:
+          concatMapStrings
+            (mkBindMount persistentStoragePath)
+            cfg.${persistentStoragePath}.directories;
+
+        bindMountScript = {
+          name = "createAndMountPersistentStoragePaths";
           value =
             dag.entryAfter
               [ "writeBoundary" ]
-              (concatMapStrings
-                (mkBindMountSnippet persistentStoragePath)
-                cfg.${persistentStoragePath}.directories
-              );
+              ''
+                declare -A mountedPaths
+                ${(concatMapStrings mkBindMountsForPath persistentStoragePaths)}
+              '';
         };
 
-        mkUnmountSnippet = persistentStoragePath: dir:
+        mkUnmount = persistentStoragePath: dir:
           let
             mountDir =
               if cfg.${persistentStoragePath}.removePrefixDirectory then
@@ -193,21 +190,26 @@ in
             fi
           '';
 
-        mkUnmountScriptForPath = persistentStoragePath: {
-          name = "unmount-" + (sanitizeName persistentStoragePath);
+        mkUnmountsForPath = persistentStoragePath:
+          concatMapStrings
+            (mkUnmount persistentStoragePath)
+            cfg.${persistentStoragePath}.directories;
+
+        unmountScript = {
+          name = "unmountPersistentStoragePaths";
           value =
             dag.entryBefore
               [ "reloadSystemD" ]
-              (concatMapStrings
-                (mkUnmountSnippet persistentStoragePath)
-                cfg.${persistentStoragePath}.directories
-              );
+              ''
+                ${concatMapStrings mkUnmountsForPath persistentStoragePaths}
+              '';
         };
 
       in
-      listToAttrs ([ declareMountedPathsArray ]
-        ++ (map mkBindMountScriptForPath persistentStoragePaths)
-        ++ (map mkUnmountScriptForPath persistentStoragePaths));
+      listToAttrs [
+        bindMountScript
+        unmountScript
+      ];
   };
 
 }
