@@ -78,7 +78,7 @@ in
             name = "bindMount-${sanitizeName targetDir}";
             startScript = pkgs.writeShellScript name ''
               set -eu
-              if ! mount | grep "${mountPoint}"; then
+              if ! ${pkgs.utillinux}/bin/mount | grep "${mountPoint}"; then
                   ${pkgs.bindfs}/bin/bindfs -f --no-allow-other "${targetDir}" "${mountPoint}"
               else
                   echo "There is already an active mount at or below ${mountPoint}!" >&2
@@ -151,8 +151,8 @@ in
             if [[ ! -e "${mountPoint}" ]]; then
                 mkdir -p "${mountPoint}"
             fi
-            if mount | grep "${mountPoint}"; then
-                if mount | grep "${mountPoint}" | grep "${targetDir}"; then
+            if ${pkgs.utillinux}/bin/mount | grep "${mountPoint}"; then
+                if ${pkgs.utillinux}/bin/mount | grep "${mountPoint}" | grep "${targetDir}"; then
                     mountedPaths["${mountPoint}"]=0
                 else
                     # The target directory changed, so we need to remount
