@@ -195,20 +195,37 @@ in
             (mkUnmount persistentStoragePath)
             cfg.${persistentStoragePath}.directories;
 
-        unmountScript = {
+        unmountFunction = {
           name = "unmountPersistentStoragePaths";
+          value =
+            dag.entryBefore
+              [ "createAndMountPersistentStoragePaths" ]
+              ''
+                unmountBindMounts() {
+                ${concatMapStrings mkUnmountsForPath persistentStoragePaths}
+                }
+
+                # Run the unmount function on error to clean up stray
+                # bind mounts
+                trap "unmountBindMounts" ERR
+              '';
+        };
+
+        runUnmountFunction = {
+          name = "runUnmountPersistentStoragePaths";
           value =
             dag.entryBefore
               [ "reloadSystemD" ]
               ''
-                ${concatMapStrings mkUnmountsForPath persistentStoragePaths}
+                unmountBindMounts
               '';
         };
 
       in
       listToAttrs [
         bindMountScript
-        unmountScript
+        unmountFunction
+        runUnmountFunction
       ];
   };
 
