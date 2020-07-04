@@ -4,8 +4,8 @@
 
   outputs = { ... }: {
     nixosModules = {
-      home-manager = import ./home-manager.nix;
-      nixos = import ./nixos.nix;
+      home-manager-persistence = import ./home-manager.nix;
+      nixos-persistence = import ./nixos.nix;
     };
   };
 }
